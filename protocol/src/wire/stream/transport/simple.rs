@@ -110,10 +110,15 @@ impl Transport for Simple
     fn process_data(&mut self,
                     read: &mut dyn Read,
                     settings: &Settings) -> Result<(), Error> {
+        use std::io;
         // Load the data into a temporary buffer before we process it.
         loop {
             let mut buffer = [0u8; BUFFER_SIZE];
-            let bytes_read = read.read(&mut buffer).unwrap();
+            let bytes_read = match read.read(&mut buffer) {
+                Ok(num) => num,
+                Err(ref e) if e.kind() == io::ErrorKind::WouldBlock => 0,
+                Err(e) => panic!("encountered an error {}", e)
+            };
             let buffer = &buffer[0..bytes_read];
 
             if bytes_read == 0 {
